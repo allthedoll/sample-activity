@@ -1,0 +1,32 @@
+name: Send User Inactivity Report
+
+on:
+  schedule:
+    - cron: "15 12 * * 0"
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    env:
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+      INACTIVE_APP_ID: ${{ secrets.INACTIVE_APP_ID }}
+      INACTIVE_CLIENT_ID: ${{ secrets.INACTIVE_CLIENT_ID }}
+      INACTIVE_CLIENT_SECRET: ${{ secrets.INACTIVE_CLIENT_SECRET }}
+      INACTIVE_PRIVATE_KEY: ${{ secrets.INACTIVE_PRIVATE_KEY }}
+      ORG: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: master
+      - uses: actions/checkout@v2
+        with:
+          ref: activity
+          path: activity
+      - name: Stage db.json
+        run: mv ${{ github.workspace }}/activity/db.json ${{ github.workspace }}/master/db.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}/master
+      - run: node src/user-report.js
+        working-directory: ${{ github.workspace }}/master

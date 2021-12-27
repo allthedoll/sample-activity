@@ -1,0 +1,38 @@
+name: Reconcile Database
+
+on:
+  schedule:
+    - cron: "15 21 * * *"
+  workflow_dispatch:
+
+jobs:
+  reconcile-database:
+    runs-on: ubuntu-latest
+    env:
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: master
+      - uses: actions/checkout@v2
+        with:
+          ref: activity
+          path: activity
+      - name: Stage db.json
+        run: mv ${{ github.workspace }}/activity/db.json ${{ github.workspace }}/master/db.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}/master
+      - name: Reconcile Users
+        run: node src/reconcile.js && mv db*.json ${{ github.workspace }}/activity/
+        working-directory: ${{ github.workspace }}/master
+      - name: Update db.json
+        run: |
+          rm -rf backup_dbs/$(ls db-*)
+          mv db-* backup_dbs
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "YOUR_BOT_EMAIL"
+          git add db.json backup_dbs
+          git commit -m 'reconciled db.json'
+          git push
+        working-directory: ${{ github.workspace }}/activity
